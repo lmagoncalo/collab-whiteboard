@@ -1,113 +1,61 @@
 const socket = io();
 
-// ------------- Users -------------
-socket.on('users', function(msg) {
-    document.getElementById('user-count').textContent = msg + ' online';
-});
-
-
-
 // ------------- Whiteboard -------------
-let brush = document.getElementById('brush');
-let brushCtx = brush.getContext('2d');
-let brushCenterX = brush.width / 2;
-let brushCenterY = brush.height / 2;
-brushCtx.lineWidth = 1;
-function drawBrush(width) {
-    brushCtx.clearRect(0, 0, brush.width, brush.height);
-    brushCtx.beginPath();
-    brushCtx.arc(brushCenterX, brushCenterY, width / 2, 0, 2 * Math.PI, false);
-    brushCtx.stroke();
-}
 
 let canvas = document.getElementById('whiteboard-canvas');
 let ctx = canvas.getContext('2d');
-ctx.lineCap = 'round';
-ctx.lineJoin = 'round';
+let clientWidth = window.screen.width;
+let clientHeight = window.screen.height;
+canvas.width = clientWidth; //document.width is obsolete
+canvas.height = clientHeight; //document.height is obsolete
 
-let currentStroke = null;
-// When undo is pressed, pop top stroke off and redraw
-let strokes = [];
+
+let n_x_squares = 80;
+let n_y_squares = 45;
+let square_size_x = Math.floor(clientWidth / n_x_squares);
+let square_size_y = Math.floor(clientHeight / n_y_squares);
 
 // Color picker
-let colorPicker = document.getElementById('color-picker');
-let currentColor = '#' + colorPicker.value;
-colorPicker.onchange = function() {
-    currentColor = '#' + this.value;
-};
+let currentColor = '#ff0000';
 
-function drawNewPoint(e) {
-    brush.style.top = e.clientY - brushCenterY + 'px';
-    brush.style.left = e.clientX - brushCenterX + 'px';
-    if (currentStroke === null)
-        return;
-
-    // cross-browser canvas coordinates
-    let x = e.offsetX || e.layerX - canvas.offsetLeft;
-    let y = e.offsetY || e.layerY - canvas.offsetTop;
-
-    currentStroke.points.push({x: x, y: y});
-    drawOnCanvas(currentStroke.points, currentStroke.color, currentStroke.thickness);
-
-    socket.emit('stroke-update', {x: x, y: y})
-}
-
-function drawOnCanvas(plots, color, thickness) {
-    ctx.beginPath();
-    ctx.moveTo(plots[0].x, plots[0].y);
-
-    for(let i = 1; i < plots.length; i++) {
-      ctx.lineTo(plots[i].x, plots[i].y);
-    }
-
-    ctx.lineWidth = thickness;
-    ctx.strokeStyle = color;
-    ctx.stroke();
+function drawOnCanvas(x, y, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x * square_size_x, y * square_size_y, square_size_x, square_size_y);
 }
 
 function startDraw(e) {
-    if (eraseCheckbox.checked) {
-        currentColor = '#FFFFFF';
-    }
-
     // Hack to draw even if cursor doesn't move
-    let x = e.offsetX || e.layerX - canvas.offsetLeft;
-    let y = e.offsetY || e.layerY - canvas.offsetTop;
+    // let x = e.offsetX || e.layerX - canvas.offsetLeft;
+    // let y = e.offsetY || e.layerY - canvas.offsetTop;
+    let x = e.layerX;
+    let y = e.layerY;
 
-    currentStroke = {
-        thickness: currentThickness,
+    x = Math.floor(x / square_size_x);
+    y = Math.floor(y / square_size_y);
+
+    currentPixel = {
+        x: x,
+        y: y,
         color: currentColor,
-        points: [{x: x-1, y: y-1}]
     };
 
-    socket.emit('stroke-start', currentStroke);
+    drawOnCanvas(x, y, currentColor);
 
-    drawNewPoint(e);
+    socket.emit('pixel-place', currentPixel);
+
+    currentColor = '#' + Math.floor(Math.random()*16777215).toString(16);
 }
-
-function endDraw() {
-    strokes.push(currentStroke);
-    currentStroke = null;
-
-    if (eraseCheckbox.checked) {
-        currentColor = '#' + colorPicker.value;
-    }
-
-    undoButton.disabled = false;
-}
-
 
 canvas.addEventListener('mousedown', startDraw, false);
-canvas.addEventListener('mousemove', drawNewPoint, false);
-canvas.addEventListener('mouseup', endDraw, false);
 
-socket.on('draw-new-stroke', function(data) {
-    drawOnCanvas(data.points, data.color, data.thickness);
+socket.on('new-pixel', function(data) {
+    drawOnCanvas(data.x, data.y, data.color);
 });
 
-socket.on('draw-strokes', function(data) {
+socket.on('draw-pixels', function(data) {
     for (let i = 0; i < data.length; i++) {
-        let stroke = data[i];
-        drawOnCanvas(stroke.points, stroke.color, stroke.thickness);
+        let pixel = data[i];
+        console.log(pixel);
+        drawOnCanvas(pixel.x, pixel.y, pixel.color);
     }
 });

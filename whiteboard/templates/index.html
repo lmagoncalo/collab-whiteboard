@@ -7,29 +7,8 @@
     <title>Collaborative Whiteboard</title>
 </head>
 <body>
-<canvas id="brush"></canvas>
 <div id="wrapper">
-    <span id="labels-wrapper">
-        <span id="user-count">Not connected</span>
-        <span id="click-count">Not connected</span>
-    </span>
-    <div id="button-wrapper">
-        <img id="button" class="default-button"
-             src="{{ url_for('static', filename='images/heart_emoji.png', _external=True) }}" alt="">
-    </div>
-    <div id="canvas-wrapper">
-        <div id="top-bar">
-            <button id="reset">Reset</button>
-            <button id="undo">Undo</button>
-            <input class="jscolor" id="color-picker" value="000000">
-            <label><input id="erase-checkbox" type="checkbox"/>Erase</label>
-            <div class="thickness-container">
-                <span>Thickness: </span>
-                <input type="range" min="2" max="30" value="3" class="slider" id="thickness-slider">
-            </div>
-        </div>
-        <canvas id="whiteboard-canvas" width="600" height="600"></canvas>
-    </div>
+<canvas id="whiteboard-canvas"/>
 </div>
 
 </body>

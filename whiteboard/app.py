@@ -6,6 +6,7 @@ import operator
 from threading import Lock
 import time
 import numpy as np
+from colormap import rgb2hex, hex2rgb
 
 
 # Taken from https://web.archive.org/web/20190420170234/http://flask.pocoo.org/snippets/35/
@@ -35,7 +36,7 @@ users = 0
 
 button_pressed = False
 
-pixels = np.array((80, 80, 3))
+pixels = {}
 pixels_lock = Lock()
 
 # Taken from https://stackoverflow.com/questions/32132648/python-flask-and-jinja2-passing-parameters-to-url-for
@@ -66,25 +67,21 @@ def get_all_pixels():
     Retrieve pixels as a list.
     :return: list of pixels
     """
+    # global pixels
+    # return pixels.tolist()
     global pixels
-    return pixels.tolist()
+    all_pixels = []
+    for keys, value in pixels.items():
+        all_pixels.append({'x': keys[0], 'y': keys[1], 'color': rgb2hex(*value)})
+    return all_pixels
 
 
 @socketio.on('connect')
 def socket_connect():
     global users, button_clicks
     users += 1
-    emit('users', users, broadcast=True)
     emit('draw-pixels', get_all_pixels())
-    if button_pressed:
-        emit('btn-click')
 
-
-@socketio.on('disconnect')
-def socket_disconnect():
-    global users
-    users -= 1
-    emit('users', users, broadcast=True)
 
 # Whiteboard handling
 @socketio.on('pixel-place')
@@ -92,8 +89,21 @@ def pixel_place(data):
     global pixels
 
     with pixels_lock:
-        pixels[request.x, request.y] = request.color
+        # print(data)
+        color = hex2rgb(data['color'])
+        pixels[(data['x'], data['y'])] = color
+
+        update_pixel = {
+            'x': data['x'],
+            'y': data['y'],
+            'color': data['color'],
+        }
+
+    emit('new-pixel', update_pixel, broadcast=True, include_self=False)
 
 if __name__ == '__main__':
     print("Server running.")
-    socketio.run(app, host='0.0.0.0', debug=True)
+    # socketio.run(app, host='0.0.0.0', debug=True)
+    socketio.run(app, host='10.16.1.247', debug=False)
+
+
