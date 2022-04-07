@@ -5,29 +5,6 @@ socket.on('users', function(msg) {
     document.getElementById('user-count').textContent = msg + ' online';
 });
 
-// ------------- Synced Button -------------
-let button = document.getElementById('button');
-button.onmousedown = function() {
-    socket.emit('btn-click');
-};
-button.onmouseup = function() {
-    socket.emit('btn-release');
-};
-
-socket.on('btn-click', function(msg) {
-    button.classList.remove('default-button');
-    button.classList.add('clicked-button');
-});
-socket.on('btn-release', function() {
-    button.classList.remove('clicked-button');
-    button.classList.add('default-button');
-});
-
-let clickCount = document.getElementById('click-count');
-socket.on('update-click-count', function(count) {
-   clickCount.textContent = count + (count === 1 ? ' click' : ' clicks');
-});
-
 
 
 // ------------- Whiteboard -------------
@@ -52,48 +29,12 @@ let currentStroke = null;
 // When undo is pressed, pop top stroke off and redraw
 let strokes = [];
 
-// Erase checkbox
-let eraseCheckbox = document.getElementById('erase-checkbox');
-eraseCheckbox.onchange = function() {
-    if (this.checked) {
-        currentThickness = thicknessSlider.value * 3;
-        brushCtx.clearRect(0, 0, brush.width, brush.height);
-        drawBrush(currentThickness);
-    } else {
-        currentThickness = thicknessSlider.value;
-        drawBrush(currentThickness);
-    }
-};
-
-// Thickness slider
-let thicknessSlider = document.getElementById("thickness-slider");
-let currentThickness = thicknessSlider.defaultValue;
-
-drawBrush(currentThickness);
-thicknessSlider.onchange = function() {
-    currentThickness = this.value;
-    if (eraseCheckbox.checked) {
-        currentThickness *= 3;
-    }
-
-    brushCtx.clearRect(0, 0, brush.width, brush.height);
-    drawBrush(currentThickness);
-};
-
 // Color picker
 let colorPicker = document.getElementById('color-picker');
 let currentColor = '#' + colorPicker.value;
 colorPicker.onchange = function() {
     currentColor = '#' + this.value;
 };
-
-// Undo button
-// Disabled since there is nothing to undo at first
-let undoButton = document.getElementById('undo');
-undoButton.disabled = true;
-
-// Reset button
-let resetButton = document.getElementById('reset');
 
 function drawNewPoint(e) {
     brush.style.top = e.clientY - brushCenterY + 'px';
@@ -155,31 +96,10 @@ function endDraw() {
     undoButton.disabled = false;
 }
 
-function clearBoard() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
-undoButton.onclick = function() {
-    strokes.pop();
-    if (strokes.length === 0) {
-        undoButton.disabled = true;
-    }
-
-    socket.emit('stroke-delete');
-};
-
-resetButton.onclick = function() {
-    clearBoard();
-    thicknessSlider.value = thicknessSlider.defaultValue;
-    thicknessSlider.onchange(null);
-    socket.emit('clear-board');
-};
 
 canvas.addEventListener('mousedown', startDraw, false);
 canvas.addEventListener('mousemove', drawNewPoint, false);
 canvas.addEventListener('mouseup', endDraw, false);
-
-socket.on('clear-board', clearBoard);
 
 socket.on('draw-new-stroke', function(data) {
     drawOnCanvas(data.points, data.color, data.thickness);

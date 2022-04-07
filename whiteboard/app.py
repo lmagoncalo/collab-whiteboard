@@ -5,8 +5,7 @@ import os
 import operator
 from threading import Lock
 import time
-
-from whiteboard import secrets
+import numpy as np
 
 
 # Taken from https://web.archive.org/web/20190420170234/http://flask.pocoo.org/snippets/35/
@@ -29,17 +28,15 @@ class ReverseProxied(object):
 
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = secrets.FLASK_SECRET_KEY
-app.wsgi_app = ReverseProxied(app.wsgi_app)
+# app.wsgi_app = ReverseProxied(app.wsgi_app)
 socketio = SocketIO(app)
 
 users = 0
 
 button_pressed = False
-button_clicks = 0
 
-strokes = defaultdict(list)
-strokes_lock = Lock()
+pixels = np.array((80, 80, 3))
+pixels_lock = Lock()
 
 # Taken from https://stackoverflow.com/questions/32132648/python-flask-and-jinja2-passing-parameters-to-url-for
 @app.context_processor
@@ -64,17 +61,13 @@ def index():
     return render_template('index.html')
 
 
-def get_all_strokes():
+def get_all_pixels():
     """
-    Retrieve from strokes list strokes in sorted order.
-    :return: list of strokes in sorted by time, ascending
+    Retrieve pixels as a list.
+    :return: list of pixels
     """
-    global strokes
-    all_strokes = []
-    for stroke_list in strokes.values():
-        all_strokes.extend(stroke_list)
-    all_strokes.sort(key=operator.itemgetter('time'))
-    return all_strokes
+    global pixels
+    return pixels.tolist()
 
 
 @socketio.on('connect')
@@ -82,8 +75,7 @@ def socket_connect():
     global users, button_clicks
     users += 1
     emit('users', users, broadcast=True)
-    emit('update-click-count', button_clicks, broadcast=True)
-    emit('draw-strokes', get_all_strokes())
+    emit('draw-pixels', get_all_pixels())
     if button_pressed:
         emit('btn-click')
 
@@ -94,81 +86,13 @@ def socket_disconnect():
     users -= 1
     emit('users', users, broadcast=True)
 
-# Button handling
-@socketio.on('btn-click')
-def button_click():
-    global button_pressed, button_clicks
-
-    if button_pressed:
-        return
-
-    button_clicks += 1
-    button_pressed = True
-
-    emit('update-click-count', button_clicks, broadcast=True)
-    emit('btn-click', broadcast=True)
-
-
-@socketio.on('btn-release')
-def button_release():
-    global button_pressed
-
-    if not button_pressed:
-        return
-
-    button_pressed = False
-    emit('btn-release', broadcast=True)
-
 # Whiteboard handling
-@socketio.on('stroke-start')
-def stroke_start(data):
-    global strokes
+@socketio.on('pixel-place')
+def pixel_place(data):
+    global pixels
 
-    with strokes_lock:
-        data['time'] = time.time()
-        strokes[request.sid].append(data)
-
-
-@socketio.on('stroke-update')
-def stroke_update(data):
-    global strokes
-
-    with strokes_lock:
-        # Original stroke will still update
-        # because stroke holds reference to most recent stroke
-        stroke = strokes[request.sid][-1]
-        stroke['points'].append(data)
-
-        update_stroke = {'thickness': stroke['thickness'],
-                         'color': stroke['color'],
-                         'points': stroke['points'][-2:]}
-    emit('draw-new-stroke', update_stroke, broadcast=True, include_self=False)
-
-
-@socketio.on('stroke-delete')
-def stroke_delete():
-    global strokes
-
-    with strokes_lock:
-        strokes[request.sid].pop()
-
-    emit('clear-board', broadcast=True)
-    emit('draw-strokes', get_all_strokes(), broadcast=True)
-
-
-@socketio.on('clear-board')
-def clear_board():
-    global strokes
-
-    with strokes_lock:
-        strokes.clear()
-    emit('clear-board', broadcast=True, include_self=False)
-
-
-@socketio.on('save-drawing')
-def save_drawing(data):
-    pass
-
+    with pixels_lock:
+        pixels[request.x, request.y] = request.color
 
 if __name__ == '__main__':
     print("Server running.")
