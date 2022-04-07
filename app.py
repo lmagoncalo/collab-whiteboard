@@ -5,7 +5,6 @@ import os
 import operator
 from threading import Lock
 import time
-import numpy as np
 from colormap import rgb2hex, hex2rgb
 
 
