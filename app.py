@@ -31,10 +31,6 @@ app = Flask(__name__)
 # app.wsgi_app = ReverseProxied(app.wsgi_app)
 socketio = SocketIO(app)
 
-users = 0
-
-button_pressed = False
-
 pixels = {}
 pixels_lock = Lock()
 
@@ -77,8 +73,6 @@ def get_all_pixels():
 
 @socketio.on('connect')
 def socket_connect():
-    global users, button_clicks
-    users += 1
     emit('draw-pixels', get_all_pixels())
 
 
