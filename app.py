@@ -102,7 +102,7 @@ def pixel_place(data):
 
 if __name__ == '__main__':
     print("Server running.")
-    # socketio.run(app, host='0.0.0.0', debug=True)
-    socketio.run(app, host='10.16.1.247', debug=False)
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)
 
 
