@@ -4,3 +4,4 @@ python-engineio==3.13.2
 python-socketio==4.6.0
 Werkzeug==2.0.0
 colormap==1.0.4
+easydev==0.12.0 
