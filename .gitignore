@@ -131,3 +131,4 @@ dmypy.json
 .idea/
 
 whiteboard/secrets.py
+*.DS_Store
