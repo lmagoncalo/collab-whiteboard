@@ -6,7 +6,6 @@ import operator
 from threading import Lock
 import time
 
-
 # Taken from https://web.archive.org/web/20190420170234/http://flask.pocoo.org/snippets/35/
 class ReverseProxied(object):
     def __init__(self, app):
@@ -28,7 +27,7 @@ class ReverseProxied(object):
 
 app = Flask(__name__)
 # app.wsgi_app = ReverseProxied(app.wsgi_app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
 
 pixels = {}
 pixels_lock = Lock()
@@ -72,6 +71,7 @@ def get_all_pixels():
 
 @socketio.on('connect')
 def socket_connect():
+    print("Connected")
     emit('draw-pixels', get_all_pixels())
 
 
@@ -80,7 +80,7 @@ def socket_connect():
 def pixel_place(data):
     global pixels
 
-    with pixels_lock:
+    with pixels_lock
         # print(data)
         color = data['color']
         pixels[(data['x'], data['y'])] = color
@@ -96,6 +96,6 @@ def pixel_place(data):
 if __name__ == '__main__':
     print("Server running.")
     port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='localhost', port=port, debug=True)
+    socketio.run(app, host='0.0.0.0', port=port, debug=False)
 
 
