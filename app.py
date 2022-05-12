@@ -5,7 +5,6 @@ import os
 import operator
 from threading import Lock
 import time
-from colormap import rgb2hex, hex2rgb
 
 
 # Taken from https://web.archive.org/web/20190420170234/http://flask.pocoo.org/snippets/35/
@@ -29,7 +28,7 @@ class ReverseProxied(object):
 
 app = Flask(__name__)
 # app.wsgi_app = ReverseProxied(app.wsgi_app)
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 pixels = {}
 pixels_lock = Lock()
@@ -67,7 +66,7 @@ def get_all_pixels():
     global pixels
     all_pixels = []
     for keys, value in pixels.items():
-        all_pixels.append({'x': keys[0], 'y': keys[1], 'color': rgb2hex(*value)})
+        all_pixels.append({'x': keys[0], 'y': keys[1], 'color': value})
     return all_pixels
 
 
@@ -83,7 +82,7 @@ def pixel_place(data):
 
     with pixels_lock:
         # print(data)
-        color = hex2rgb(data['color'])
+        color = data['color']
         pixels[(data['x'], data['y'])] = color
 
         update_pixel = {
@@ -97,6 +96,6 @@ def pixel_place(data):
 if __name__ == '__main__':
     print("Server running.")
     port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port, debug=True)
+    socketio.run(app, host='localhost', port=port, debug=True)
 
 
