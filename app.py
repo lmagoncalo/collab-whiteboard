@@ -1,53 +1,15 @@
-from collections import defaultdict
-from flask import Flask, render_template, url_for, request
+from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 import os
-import operator
 from threading import Lock
-import time
-
-# Taken from https://web.archive.org/web/20190420170234/http://flask.pocoo.org/snippets/35/
-class ReverseProxied(object):
-    def __init__(self, app):
-        self.app = app
-
-    def __call__(self, environ, start_response):
-        script_name = environ.get('HTTP_X_SCRIPT_NAME', '')
-        if script_name:
-            environ['SCRIPT_NAME'] = script_name
-            path_info = environ['PATH_INFO']
-            if path_info.startswith(script_name):
-                environ['PATH_INFO'] = path_info[len(script_name):]
-
-        scheme = environ.get('HTTP_X_SCHEME', '')
-        if scheme:
-            environ['wsgi.url_scheme'] = scheme
-        return self.app(environ, start_response)
 
 
 app = Flask(__name__)
-# app.wsgi_app = ReverseProxied(app.wsgi_app)
-socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
+# socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 pixels = {}
 pixels_lock = Lock()
-
-# Taken from https://stackoverflow.com/questions/32132648/python-flask-and-jinja2-passing-parameters-to-url-for
-@app.context_processor
-def override_url_for():
-    if app.debug:
-        return dict(url_for=dated_url_for)
-    return dict(url_for=url_for)
-
-
-def dated_url_for(endpoint, **values):
-    if endpoint == 'static':
-        filename = values.get('filename', None)
-        if filename:
-            file_path = os.path.join(app.root_path,
-                                     endpoint, filename)
-            values['q'] = int(os.stat(file_path).st_mtime)
-    return url_for(endpoint, **values)
 
 
 @app.route('/')
@@ -80,7 +42,7 @@ def socket_connect():
 def pixel_place(data):
     global pixels
 
-    with pixels_lock
+    with pixels_lock:
         # print(data)
         color = data['color']
         pixels[(data['x'], data['y'])] = color
@@ -93,9 +55,26 @@ def pixel_place(data):
 
     emit('new-pixel', update_pixel, broadcast=True, include_self=False)
 
+
+@socketio.on('pixel-remove')
+def pixel_remove(data):
+    global pixels
+
+    with pixels_lock:
+        # print(data)
+        del pixels[(data['x'], data['y'])]
+
+        removed_pixel = {
+            'x': data['x'],
+            'y': data['y'],
+        }
+
+    emit('remove-pixel', removed_pixel, broadcast=True, include_self=False)
+
+
 if __name__ == '__main__':
     print("Server running.")
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 8080))
     socketio.run(app, host='0.0.0.0', port=port, debug=False)
 
 
